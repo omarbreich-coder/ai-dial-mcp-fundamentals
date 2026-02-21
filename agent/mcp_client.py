@@ -24,9 +24,9 @@ class MCPClient:
         # 5. Call `self.session.initialize()`, and print its result (to check capabilities of MCP server later)
         # 6. return self
         self._streams_context = streamable_http_client(self.mcp_server_url)
-        await self._streams_context.__aenter__()
-        self.session = ClientSession(self._streams_context.read_stream, self._streams_context.write_stream)
-        await self.session.__aenter__()
+        read_stream, write_stream, _ = await self._streams_context.__aenter__()
+        self._session_context = ClientSession(read_stream, write_stream)
+        self.session = await self._session_context.__aenter__()
         res = await self.session.initialize()
         print(res)
         return self
@@ -36,8 +36,10 @@ class MCPClient:
         # This is shutdown method.
         # If session is present and session context is present as well then shutdown the session context (__aexit__ method with params)
         # If streams context is present then shutdown the streams context (__aexit__ method with params)
-        await self.session.__aexit__(exc_type, exc_val, exc_tb)
-        await self._streams_context.__aexit__(exc_type, exc_val, exc_tb)
+        if self.session and self._session_context:
+            await self._session_context.__aexit__(exc_type, exc_val, exc_tb)
+        if self._streams_context:
+            await self._streams_context.__aexit__(exc_type, exc_val, exc_tb)
 
     async def get_tools(self) -> list[dict[str, Any]]:
         """Get available tools from MCP server"""

@@ -1,6 +1,7 @@
 import asyncio
 import os
 
+from dotenv import load_dotenv
 from mcp import Resource
 from mcp.types import Prompt
 
@@ -8,6 +9,8 @@ from agent.mcp_client import MCPClient
 from agent.dial_client import DialClient
 from agent.models.message import Message, Role
 from agent.prompts import SYSTEM_PROMPT
+
+load_dotenv()
 
 
 # https://remote.mcpservers.org/fetch/mcp
@@ -33,7 +36,9 @@ async def main():
         messages = [Message(role=Role.SYSTEM, content=SYSTEM_PROMPT)]
         mcp_prompts = await mcp_client.get_prompts()
         for prompt in mcp_prompts:
-            messages.append(Message(role=Role.USER, content=prompt.content))
+            prompt_content = await mcp_client.get_prompt(prompt.name)
+            if prompt_content:
+                messages.append(Message(role=Role.USER, content=prompt_content))
         while True:
             user_input = input("You: ")
             messages.append(Message(role=Role.USER, content=user_input))
