@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 
 from mcp import Resource
@@ -24,8 +23,23 @@ async def main():
     # 5. Create list with messages and add there SYSTEM_PROMPT with instructions to LLM
     # 6. Add to messages Prompts from MCP server as User messages
     # 7. Create console chat (infinite loop + ability to exit from chat + preserve message history after the call to dial client)
-    raise NotImplementedError()
-
+    mcp_client = MCPClient(mcp_server_url="http://localhost:8005/mcp")
+    async with mcp_client as mcp_client:
+        resources = await mcp_client.get_resources()
+        print(resources)
+        tools = await mcp_client.get_tools()
+        print(tools)
+        dial_client = DialClient(api_key=os.getenv("DIAL_API_KEY"), endpoint=os.getenv("DIAL_ENDPOINT"), tools=tools, mcp_client=mcp_client)
+        messages = [Message(role=Role.SYSTEM, content=SYSTEM_PROMPT)]
+        mcp_prompts = await mcp_client.get_prompts()
+        for prompt in mcp_prompts:
+            messages.append(Message(role=Role.USER, content=prompt.content))
+        while True:
+            user_input = input("You: ")
+            messages.append(Message(role=Role.USER, content=user_input))
+            dial_message = await dial_client.get_completion(messages)
+            messages.append(dial_message)
+            print(dial_message.content)
 
 if __name__ == "__main__":
     asyncio.run(main())
